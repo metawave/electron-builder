@@ -1,0 +1,26 @@
+steps:
+  - name: replace image name
+    image: alpine
+    commands:
+      - find . -type f -exec sed -i 's|electronuserland/builder|metawave/electron-builder|g' {} \;
+
+  - name: build images
+    image: docker:24-cli
+    secrets: [ docker_username, docker_password ]
+    environment:
+      - DOCKER_HOST=tcp://docker:2375
+    commands:
+      - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes -c yes
+      - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+      - sh ./docker/build.sh
+      - sh ./docker/push.sh
+
+services:
+  docker:
+    image: docker:dind
+    environment:
+      - DOCKER_HOST=tcp://docker:2375
+    ports:
+    - 2375
+    commands: dockerd --storage-driver=vfs --tls=false --host=tcp://0.0.0.0:2375
+    privileged: true
